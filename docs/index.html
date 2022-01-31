@@ -20,19 +20,29 @@
         }
 
         function calcGFE(){
-            code = document.getElementById("hcpcscode").value; //[0].innerText;
+            rcel = document.getElementById('resultcomments'); 
+            rcel.innerHTML = "";
+            rpel = document.getElementById('resultpre');
+            rpel.innerHTML = "";
+
+            code = document.getElementById("hcpcscode").value.padStart(5, '0'); //[0].innerText;
             state = document.getElementById("state").value;
             pos = document.getElementById("pos").value;
             discount = document.getElementById("discount").value;
             console.log(code+' '+state + ' ' + pos);
             var res = getFilteredGFEData(gfedata, code, state, pos);
             console.log(res);
-            gfe = res[0].Avg_Sbmtd_Chrg * (100-discount) / 100.0
-            desc = lookupCPTDesc(hcpcslookup, code);
-            document.getElementById('resultcomments').innerHTML = 
-                "<b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfe)+"</font></b><br>" +
-                "Procedure: " + desc + "<br><br>";
-            document.getElementById('resultpre').innerHTML = syntaxHighlight(JSON.stringify(res, undefined, 4));
+            if (res.length==0){
+                rcel.innerHTML = "<b>NO DATA FOUND FOR SEARCH CRITERIA</b>"
+            } 
+            else{
+                gfe = res[0].Avg_Sbmtd_Chrg * (100-discount) / 100.0
+                desc = lookupCPTDesc(hcpcslookup, code);
+                rcel.innerHTML = 
+                    "<b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfe)+"</font></b><br>" +
+                    "Procedure: " + desc + "<br><br>";
+                rpel.innerHTML = syntaxHighlight(JSON.stringify(res, undefined, 4));
+            }
             document.getElementById('resultpane').hidden = 0;
         }
 
@@ -64,6 +74,7 @@
 </head>
 <body>
     <font face='Arial'>
+    <img src='logo_size.jpg' height=116 width=150><br><br><br>
     Use this calculator to determine a Good-Faith Estimate of self-pay charges for out-of-network billing, based upon CMS data.
 
     <bR><br>
