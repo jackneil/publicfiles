@@ -1,0 +1,187 @@
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="csv.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+
+    <script lang="javacript">
+        function getFilteredGFEData(data, code, state, pos){
+            return data.filter(function(row) { 
+                return row.HCPCS_Cd === code &&
+                    row.Rndrng_Prvdr_State_Abrvtn === state.toUpperCase() &&
+                    row.Place_Of_Srvc === pos.toUpperCase(); 
+                })
+        }
+        function lookupCPTDesc(data, code){
+            fd = data.filter(function(row) {
+                return row.code === code;
+            })
+            return fd[0].description;
+        }
+
+        function calcGFE(){
+            code = document.getElementById("hcpcscode").value; //[0].innerText;
+            state = document.getElementById("state").value;
+            pos = document.getElementById("pos").value;
+            discount = document.getElementById("discount").value;
+            console.log(code+' '+state + ' ' + pos);
+            var res = getFilteredGFEData(gfedata, code, state, pos);
+            console.log(res);
+            gfe = res[0].Avg_Sbmtd_Chrg * (100-discount) / 100.0
+            desc = lookupCPTDesc(hcpcslookup, code);
+            document.getElementById('resultcomments').innerHTML = 
+                "<b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfe)+"</font></b><br>" +
+                "Procedure: " + desc + "<br><br>";
+            document.getElementById('resultpre').innerHTML = syntaxHighlight(JSON.stringify(res, undefined, 4));
+            document.getElementById('resultpane').hidden = 0;
+        }
+
+        function syntaxHighlight(json) {
+            if (typeof json != 'string') {
+                json = JSON.stringify(json, undefined, 2);
+            }
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                var cls = 'number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'key';
+                    } else {
+                        cls = 'string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+    </script>
+    <title>
+        Hank.health Good Faith Estimator
+    </title>
+</head>
+<body>
+    <font face='Arial'>
+    Use this calculator to determine a Good-Faith Estimate of self-pay charges for out-of-network billing, based upon CMS data.
+
+    <bR><br>
+    <form name='gfecalcform' action="javascript:void(0);">
+        HCPCS Code: <input name='hcpcscode' id='hcpcscode' type='text' width=7 maxlength=5>
+        <br><br>
+        State: 
+        <select name='state' id='state'>
+            <option value="AL">Alabama</option>
+            <option value="AK">Alaska</option>
+            <option value="AZ">Arizona</option>
+            <option value="AR">Arkansas</option>
+            <option value="CA">California</option>
+            <option value="CO">Colorado</option>
+            <option value="CT">Connecticut</option>
+            <option value="DE">Delaware</option>
+            <option value="DC">District Of Columbia</option>
+            <option value="FL">Florida</option>
+            <option value="GA">Georgia</option>
+            <option value="HI">Hawaii</option>
+            <option value="ID">Idaho</option>
+            <option value="IL">Illinois</option>
+            <option value="IN">Indiana</option>
+            <option value="IA">Iowa</option>
+            <option value="KS">Kansas</option>
+            <option value="KY">Kentucky</option>
+            <option value="LA">Louisiana</option>
+            <option value="ME">Maine</option>
+            <option value="MD">Maryland</option>
+            <option value="MA">Massachusetts</option>
+            <option value="MI">Michigan</option>
+            <option value="MN">Minnesota</option>
+            <option value="MS">Mississippi</option>
+            <option value="MO">Missouri</option>
+            <option value="MT">Montana</option>
+            <option value="NE">Nebraska</option>
+            <option value="NV">Nevada</option>
+            <option value="NH">New Hampshire</option>
+            <option value="NJ">New Jersey</option>
+            <option value="NM">New Mexico</option>
+            <option value="NY">New York</option>
+            <option value="NC">North Carolina</option>
+            <option value="ND">North Dakota</option>
+            <option value="OH">Ohio</option>
+            <option value="OK">Oklahoma</option>
+            <option value="OR">Oregon</option>
+            <option value="PA">Pennsylvania</option>
+            <option value="RI">Rhode Island</option>
+            <option value="SC" selected>South Carolina</option>
+            <option value="SD">South Dakota</option>
+            <option value="TN">Tennessee</option>
+            <option value="TX">Texas</option>
+            <option value="UT">Utah</option>
+            <option value="VT">Vermont</option>
+            <option value="VA">Virginia</option>
+            <option value="WA">Washington</option>
+            <option value="WV">West Virginia</option>
+            <option value="WI">Wisconsin</option>
+            <option value="WY">Wyoming</option>
+        </select>				
+                
+        <br><br>
+        Place of Service: 
+        <select name="pos" id='pos'>
+            <option value="O">Outpatient</option>
+            <option value="F" selected>Inpatient</option>
+        </select>
+        <br><br>
+        Your Typical Cash Discount from Charged Amount: 
+        <input id='discount' type='text' width='4' maxlength=4 value='40'> percent
+
+        <br><br><br>
+        <input type="submit" onclick="calcGFE()" value='Get Estimates'></input>
+        <br><br><br>
+        <div id='resultpane' hidden=1>
+            <span id='resultcomments'>
+
+            </span>
+            <pre id='resultpre'>
+
+            </pre>
+        </div>
+    </form>
+
+    </font>
+    <script>
+        var gfedata = [];
+        var hcpcslookup = [];
+        var urlgfedata = "https://raw.githubusercontent.com/jackneil/publicfiles/main/hcpcs-state.csv"; 
+        d3.csv(urlgfedata, function(rows) {
+            rows.forEach(function(d) {
+                if (0 && d.HCPCS_Cd=='00300'){ 
+                    console.log(d); 
+                }
+            })
+            gfedata = rows;
+
+        });
+
+        var urlhcpcsdescs = "https://raw.githubusercontent.com/jackneil/publicfiles/main/hcpcsdescs.csv"; 
+        d3.csv(urlhcpcsdescs, function(rows) {
+            hcpcslookup = rows;
+
+        });
+
+//         CSV.fetch({
+//             url: url
+//             //url: "https://raw.githubusercontent.com/jackneil/publicfiles/blob/a00b9f692a6eb02d4c2820f8ae67ba236761fee7/hcpcs-state.csv"
+// //            url: "https://github.com/jackneil/publicfiles/blob/main/hcpcs-state.csv?s=RIL.BO&callback=?"
+//         }).done(function(dataset){
+//             console.log(dataset);
+//             data = $.csv.toObjects(dataset);
+//         });
+
+    //     jQuery.getJSON('https://github.com/jackneil/publicfiles/blob/main/hcpcs-state.csv?s=RIL.BO&callback=?', function (csvdata) {
+    //         console.log(csvdata.csvToArray());
+    //     });
+    </script>
+</body>
+
+</html>
