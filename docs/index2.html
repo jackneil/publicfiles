@@ -183,7 +183,7 @@
         var urlhcpcsdescs = "https://raw.githubusercontent.com/jackneil/publicfiles/main/hcpcsdescs.csv";
         hcpcsitems = ""
         /* Remove all options from the select list */
-        hcpcsel = $('hcpcscode')
+        hcpcsel = $('#hcpcscode')
         hcpcsel.empty();
 
         d3.csv(urlhcpcsdescs, function(rows) {
@@ -196,7 +196,7 @@
                 //hcpcsitems += "<option value="+row.code+">"+row.code+"-"+row.description+"</option>\n"
             })
             //document.getElementById("hcpcscode").innerHTML=hcpcsitems;
-            $("#hcpcscode").selectize({
+            hcpcsel.selectize({
               maxItems: 1,
             });
         });
