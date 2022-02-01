@@ -166,9 +166,6 @@
         $("#state").selectize({
           maxItems: 1,
         });
-        $("#hcpcscode").selectize({
-          maxItems: 1,
-        });
         
         var gfedata = [];
         var hcpcslookup = [];
@@ -185,12 +182,22 @@
 
         var urlhcpcsdescs = "https://raw.githubusercontent.com/jackneil/publicfiles/main/hcpcsdescs.csv";
         hcpcsitems = ""
+        /* Remove all options from the select list */
+        $('hcpcscode').empty();
+
         d3.csv(urlhcpcsdescs, function(rows) {
             hcpcslookup = rows;
             rows.forEach(function(row) {
-                hcpcsitems += "<option value="+row.code+">"+row.code+"-"+row.description+"</option>\n"
+                new Element('option')
+                    .set('text', row.code+" - "+row.description)
+                    .set('value', row.code)
+                    .inject($('hcpcscode'));
+                //hcpcsitems += "<option value="+row.code+">"+row.code+"-"+row.description+"</option>\n"
             })
-            document.getElementById("hcpcscode").innerHTML=hcpcsitems;
+            //document.getElementById("hcpcscode").innerHTML=hcpcsitems;
+            $("#hcpcscode").selectize({
+              maxItems: 1,
+            });
         });
 
 //         CSV.fetch({
