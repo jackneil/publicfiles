@@ -50,7 +50,7 @@
             document.getElementById('resultpane').hidden = 0;
         }
         function printPDF(){
-            html2pdf(document.getELementById('resultpane'));
+            html2pdf(document.getElementById('resultpane'));
         }
         function syntaxHighlight(json) {
             if (typeof json != 'string') {
@@ -155,8 +155,8 @@
         <br><br><br>
         <input type="submit" onclick="calcGFE()" value='Get Estimates'></input>
         <br><br><br>
-        <div id='resultpane' hidden=1>
-            <span><button id='savepdf' onclick="printPDF()">Save Results to PDF</button></span>
+        <div id='resultpane' hidden=1><br>
+            <span><button id='savepdf' onclick="printPDF()">Save Results to PDF</button><br></span>
             <span id='resultcomments'>
 
             </span>
