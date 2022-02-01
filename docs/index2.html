@@ -183,15 +183,16 @@
         var urlhcpcsdescs = "https://raw.githubusercontent.com/jackneil/publicfiles/main/hcpcsdescs.csv";
         hcpcsitems = ""
         /* Remove all options from the select list */
-        $('hcpcscode').empty();
+        hcpcsel = $('hcpcscode')
+        hcpcsel.empty();
 
         d3.csv(urlhcpcsdescs, function(rows) {
             hcpcslookup = rows;
             rows.forEach(function(row) {
-                new Element('option')
-                    .set('text', row.code+" - "+row.description)
-                    .set('value', row.code)
-                    .inject($('hcpcscode'));
+                var newel = document.createElement('option');
+                newel.innerHTML = 'text', row.code+" - "+row.description);
+                newel.value = row.code;
+                hcpcsel.append(newel);
                 //hcpcsitems += "<option value="+row.code+">"+row.code+"-"+row.description+"</option>\n"
             })
             //document.getElementById("hcpcscode").innerHTML=hcpcsitems;
