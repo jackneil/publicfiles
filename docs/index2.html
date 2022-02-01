@@ -190,7 +190,7 @@
             hcpcslookup = rows;
             rows.forEach(function(row) {
                 var newel = document.createElement('option');
-                newel.innerHTML = 'text', row.code+" - "+row.description);
+                newel.innerHTML = row.code+" - "+row.description;
                 newel.value = row.code;
                 hcpcsel.append(newel);
                 //hcpcsitems += "<option value="+row.code+">"+row.code+"-"+row.description+"</option>\n"
