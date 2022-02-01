@@ -36,6 +36,13 @@
             console.log(code+' '+state + ' ' + pos);
             var res = getFilteredGFEData(gfedata, code, state, pos);
             console.log(res);
+            var currentdate = new Date(); 
+            var datetime = "Last Sync: " + currentdate.getDate() + "/"
+                            + (currentdate.getMonth()+1)  + "/" 
+                            + currentdate.getFullYear() + " @ "  
+                            + currentdate.getHours() + ":"  
+                            + currentdate.getMinutes() + ":" 
+                            + currentdate.getSeconds();
             if (res.length==0){
                 rcel.innerHTML = "<b>NO DATA FOUND FOR SEARCH CRITERIA</b>"
             } 
@@ -44,7 +51,8 @@
                 desc = lookupCPTDesc(hcpcslookup, code);
                 rcel.innerHTML = 
                     "<b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfe)+"</font></b><br>" +
-                    "Procedure: " + desc + "<br><br>";
+                    "Procedure: " + desc + "<br>" + 
+                    "Performed "+datetime+"<br><br>";
                 rpel.innerHTML = syntaxHighlight(JSON.stringify(res, undefined, 4));
             }
             document.getElementById('resultpane').hidden = 0;
