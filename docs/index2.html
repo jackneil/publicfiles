@@ -37,8 +37,8 @@
             var res = getFilteredGFEData(gfedata, code, state, pos);
             console.log(res);
             var currentdate = new Date(); 
-            var datetime = "Last Sync: " + currentdate.getDate() + "/"
-                            + (currentdate.getMonth()+1)  + "/" 
+            var datetime = (currentdate.getMonth()+1) + "/"
+                            +  currentdate.getDate() + "/" 
                             + currentdate.getFullYear() + " @ "  
                             + currentdate.getHours() + ":"  
                             + currentdate.getMinutes() + ":" 
