@@ -5,6 +5,8 @@
     <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.js"></script>
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.default.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
     
     <script lang="javacript">
         function getFilteredGFEData(data, code, state, pos){
@@ -47,7 +49,9 @@
             }
             document.getElementById('resultpane').hidden = 0;
         }
-
+        function printPDF(){
+            html2pdf(document.getELementById('resultpane'));
+        }
         function syntaxHighlight(json) {
             if (typeof json != 'string') {
                 json = JSON.stringify(json, undefined, 2);
@@ -152,6 +156,7 @@
         <input type="submit" onclick="calcGFE()" value='Get Estimates'></input>
         <br><br><br>
         <div id='resultpane' hidden=1>
+            <span><button id='savepdf' onclick="printPDF()">Save Results to PDF</button></span>
             <span id='resultcomments'>
 
             </span>
