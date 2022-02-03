@@ -88,14 +88,13 @@
             if (sels.length>1){
                 elem[0].selectize.removeItem(sels[0], true);
             }
+            calcGFE();
         }
 
         function hcpcsClickHandler(el){
             var vals = $('#hcpcscode').val();
             console.log(vals);
             $("#suggestions").hide();
-            if (vals.length==0){ $("#print").hide(); }
-            else{ $("#print").show(); }
             if (vals.length==1){
                 var code = vals[0];
                 var cwd = asacwdata.filter(function(row) {
@@ -205,10 +204,13 @@
                             + currentdate.getHours() + ":"  
                             + currentdate.getMinutes() + ":" 
                             + currentdate.getSeconds();
+    
             if (res.length==0){
                 rcel.innerHTML = "<b>NO DATA FOUND FOR SEARCH CRITERIA</b>"
+                $("#print").hide();
             } 
             else{
+                $("#print").show(); 
                 var charges = 0;
                 var gfes = 0;
                 var descs = [];
@@ -361,7 +363,7 @@
         </select>
         <br><br>
         Your Typical Cash Discount from Charged Amount: 
-        <input id='discount' type='text' width='4' maxlength=4 value='40'> percent
+        <input id='discount' type='text' width='4' maxlength=4 value='40' onchange="calcGFE()"> percent
 
         <br><br><br>
         <input type="submit" id='getestimate' onclick="calcGFE()" hidden value='Get Estimates'></input>
