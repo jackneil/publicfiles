@@ -98,11 +98,13 @@
             if (vals.length==1){
                 var code = vals[0];
                 var cwd = asacwdata.filter(function(row) {
-                    return row.CPT===code;
+                    return row.CPT===code && row.ASA != '';
                 });
                 if(cwd.length>0){
+                    console.log('cwd:', cwd);
                     shtml = "<span>Suggestion: Add one of the following anesthesia services ...<br>";
                     cwd.forEach(function(row) {
+                    
                         shtml += "<div class='suggestion' id='"+row.ASA+"' onclick=\"javascript: selectCode('"+
                             row.ASA+"')\">"+row.ASA+" ("+Math.round((parseFloat(row.ASA_FREQ)+Number.EPSILON)*100)+"% probability) "+
                             lookupCPTDesc(hcpcslookup, row.ASA)+"</div><br>";
@@ -154,13 +156,22 @@
             }
             calcGFE();
         }
-        function getFilteredGFEData(data, codes, state, pos){
+        function getFilteredGFEData(data, codes, state) { //}, pos){
+            console.log("filtering for: ", codes, state);
+            codesfound = [];
             return data.filter(function(row) { 
-                return codes.indexOf(row.HCPCS_Cd)>=0 &&
-                    row.Rndrng_Prvdr_State_Abrvtn === state.toUpperCase() &&
-                    row.Place_Of_Srvc === pos.toUpperCase(); 
-                })
+                if ((codes.indexOf(row.HCPCS_Cd)>=0) && 
+                (codesfound.indexOf(row.HCPCS_Cd)<0) && 
+                (row.Rndrng_Prvdr_State_Abrvtn == state.toUpperCase())){
+                    codesfound.push(row.HCPCS_Cd)
+                    return row;    
+                }
+            })
+            //   &&
+            //         row.Place_Of_Srvc === pos.toUpperCase(); 
+            //     })
         }
+
         function lookupCPTDesc(data, code){
             fd = data.filter(function(row) {
                 return row.code === code;
@@ -190,11 +201,11 @@
 
             codes = $("#hcpcscode").val(); //.padStart(5, '0'); //[0].innerText;
             state = document.getElementById("state").value;
-            pos = document.getElementById("pos").value;
+            //pos = document.getElementById("pos").value;
             discount = document.getElementById("discount").value;
-            console.log(codes+' '+state + ' ' + pos);
+            console.log(codes+' '+state); // + ' ' + pos);
 
-            var res = getFilteredGFEData(gfedata, codes, state, pos);
+            var res = getFilteredGFEData(gfedata, codes, state); //, pos);
             
             console.log(res);
             var currentdate = new Date(); 
@@ -230,10 +241,10 @@
                 console.log("Total charges: "+charges);
                 console.log("Total GFE: "+gfes);
                 console.log("Descriptions: "+descs);
-                shtml = "<b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfes)+"</font></b><br>" +
+                shtml = "<br><b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfes)+"</font></b><br>" +
                     "Estimate provided "+currentdate+"<br>";
                 if (unfoundcodes.length>0){ 
-                    shtml += "<b><font size='+1'>NOTICE. GFE DOES NOT INCLUDE THE FOLLOWING CODES: "+
+                    shtml += "<br><b><font size='+1'>NOTICE. GFE DOES NOT INCLUDE THE FOLLOWING CODES: "+
                         unfoundcodes.join(", ")+"</font></b><br>";
                 }
                 shtml+= "<br><table class='gfetable'><thead><tr><td>Procedures</td></tr></thead><tbody>";
@@ -286,7 +297,7 @@
 <body>
     <font face='Arial'>
         <a href='https://hank.ai' target='_blank'><img src='logo_size.jpg' height=116 width=150></a><br><br><br>
-    Use this calculator to determine a Good-Faith Estimate of self-pay charges based upon CMS data.
+    Use this calculator to determine a Good-Faith Estimate of self-pay charges based upon 2019 CMS data.
 
     <bR><br>
     <form name='gfecalcform' action="javascript:void(0);">
@@ -299,7 +310,7 @@
         <div id='suggestions' hidden>
                 Suggestion tags go here
         </div>
-        <br><br>
+        <br>
         State: 
         <select name='state' id='state' width='30' onchange="limitOne(this)">
             <option value="AL">Alabama</option>
@@ -356,23 +367,22 @@
         </select>				
                 
         <br><br>
-        Place of Service: 
+        <!-- Place of Service: 
         <select name="pos" id='pos' onchange="limitOne(this)">
             <option value="O">Outpatient</option>
             <option value="F" selected>Inpatient</option>
         </select>
-        <br><br>
+        <br> -->
         Your Typical Cash Discount from Charged Amount: 
         <input id='discount' type='text' width='4' maxlength=4 value='40' onchange="calcGFE()"> percent
 
-        <br><br><br>
-        <input type="submit" id='getestimate' onclick="calcGFE()" hidden value='Get Estimates'></input>
         <br><br>
+        <input type="submit" id='getestimate' onclick="calcGFE()" hidden value='Get Estimates'></input>
         <div id='resultpane' hidden><br>
             <span><button id='savepdf' onclick="savePDF()" hidden>Save Results to PDF</button></span>
             <span><button id='print' onclick="window.print()" hidden>Print Estimate</button></span>
             <div class="pagebreak"></div>
-            <span><br><br></span>
+            <span><br></span>
             <span id='resultcomments'>
 
             </span>
