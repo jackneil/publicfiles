@@ -31,6 +31,7 @@
     </style>
     <script lang="javacript">
         function selectCode(code){
+            $('#hcpcscode')[0].selectize.setCaret(100);
             $('#hcpcscode')[0].selectize.addItem(code, false);
         }
         
@@ -73,6 +74,35 @@
                 $('#hcpcscode')[0].selectize.setCaret(-1);
                 $("#getestimate").focus();
             }
+            else if (vals.length>1){
+                var codes = vals;
+                var cpt = vals[0];
+                var asa = vals[1];
+                var addlis = addllidata.filter(function(row){
+                    return row.CPT===cpt && row.ASA === asa;
+                });
+                console.log(addlis);
+                if (addlis.length>0){
+                    shtml = "<span>Suggestion: Add following additional services ...<br>";
+                    addlis.forEach(function(row){ //CPT,ASA,ADDLCPT,ADDLCPT_COUNT,CLAIM_COUNT,ADDLCPT_FREQ
+                        if (codes.indexOf(row.ADDLCPT)<0) {
+                            shtml += "<div class='suggestion' id='"+row.ADDLCPT+"' onclick=\"javascript: selectCode('"+
+                                row.ADDLCPT+"')\">"+row.ADDLCPT+" ("+Math.round((parseFloat(row.ADDLCPT_FREQ)+Number.EPSILON)*100)+"%) "+
+                                lookupCPTDesc(hcpcslookup, row.ADDLCPT)+"</div><br>";
+                            //selectCode(row.ASA);
+                            //$('#hcpcscode')[0].selectize.addItem(row.ASA, false);
+                            vals.push(row.ADDLCPT);
+                        }
+                    });
+                    $("#suggestions")
+                        .html(shtml+"</span>")
+                        .show();
+                    console.log(shtml);
+                    console.log(vals);
+                    $('#hcpcscode')[0].selectize.setCaret(-1);
+                    $("#getestimate").focus();
+                }
+            }
         }
         function getFilteredGFEData(data, codes, state, pos){
             return data.filter(function(row) { 
@@ -85,6 +115,8 @@
             fd = data.filter(function(row) {
                 return row.code === code;
             })
+            if (fd.length==0){ return "unknown cpt description for "+code;}
+
             return fd[0].description;
         }
 

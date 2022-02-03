@@ -5,11 +5,108 @@
     <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.js"></script>
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.default.css" />
-    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <style>
+        .suggestion {
+            text-shadow: 0 1px 0 rgba(0, 51, 83, .3);
+            border-radius: 3px;
+            background-color: #1b9dec;
+            background-image: linear-gradient(to bottom, #1da7ee, #178ee9);
+            background-repeat: repeat-x;
+            box-shadow: 0 1px 0 rgba(0, 0, 0, .2), inset 0 1px rgba(255, 255, 255, .03);
+            cursor: pointer;
+            margin: 3px 3px 3px 0;
+            padding: 3px 12px;
+            background: #1da7ee;
+            color: #fff;
+            border: 1px solid #0073bb;
+            display: inline-flex;
+            align-items: center;
+            padding-right: 0 !important;
+            font-family: inherit;
+            font-size: 13px;
+            line-height: 18px;
+        }
+    </style>
     <script lang="javacript">
-        function getFilteredGFEData(data, code, state, pos){
+        function selectCode(code){
+            $('#hcpcscode')[0].selectize.setCaret(100);
+            $('#hcpcscode')[0].selectize.addItem(code, false);
+        }
+        
+        function limitOne(el){
+            elem = $(el);
+            sels = elem.val();
+            if (sels.length>1){
+                elem[0].selectize.removeItem(sels[0], true);
+            }
+        }
+
+        function hcpcsClickHandler(el){
+            var vals = $('#hcpcscode').val();
+            console.log(vals);
+            $("#suggestions").hide();
+            if (vals.length==1){
+                var code = vals[0];
+                var cwd = asacwdata.filter(function(row) {
+                    return row.CPT===code;
+                });
+                if(cwd.length>0){
+                    shtml = "<span>Suggestion: Add one of the following anesthesia services ...<br>";
+                    cwd.forEach(function(row) {
+                        shtml += "<div class='suggestion' id='"+row.ASA+"' onclick=\"javascript: selectCode('"+
+                            row.ASA+"')\">"+row.ASA+" ("+Math.round((parseFloat(row.ASA_FREQ)+Number.EPSILON)*100)+"%) "+
+                            lookupCPTDesc(hcpcslookup, row.ASA)+"</div><br>";
+                        //selectCode(row.ASA);
+                        //$('#hcpcscode')[0].selectize.addItem(row.ASA, false);
+                        vals.push(row.ASA);
+                    })
+                    $("#suggestions")
+                        .html(shtml+"</span>")
+                        .show();
+                    console.log(shtml);
+                }
+                //$("#hcpcscode").val(vals);
+                //$("#hcpcscode").
+                
+                console.log(vals);
+                $('#hcpcscode')[0].selectize.setCaret(-1);
+                $("#getestimate").focus();
+            }
+            else if (vals.length>1){
+                var codes = vals;
+                var cpt = vals[0];
+                var asa = vals[1];
+                var addlis = addllidata.filter(function(row){
+                    return row.CPT===cpt && row.ASA === asa;
+                });
+                console.log(addlis);
+                if (addlis.length>0){
+                    shtml = "<span>Suggestion: Add following additional services ...<br>";
+                    addlis.forEach(function(row){ //CPT,ASA,ADDLCPT,ADDLCPT_COUNT,CLAIM_COUNT,ADDLCPT_FREQ
+                        if (codes.indexOf(row.ADDLCPT)<0) {
+                            shtml += "<div class='suggestion' id='"+row.ADDLCPT+"' onclick=\"javascript: selectCode('"+
+                                row.ADDLCPT+"')\">"+row.ADDLCPT+" ("+Math.round((parseFloat(row.ADDLCPT_FREQ)+Number.EPSILON)*100)+"%) "+
+                                lookupCPTDesc(hcpcslookup, row.ADDLCPT)+"</div><br>";
+                            //selectCode(row.ASA);
+                            //$('#hcpcscode')[0].selectize.addItem(row.ASA, false);
+                            vals.push(row.ADDLCPT);
+                        }
+                    });
+                    $("#suggestions")
+                        .html(shtml+"</span>")
+                        .show();
+                    console.log(shtml);
+                    console.log(vals);
+                    $('#hcpcscode')[0].selectize.setCaret(-1);
+                    $("#getestimate").focus();
+                }
+            }
+        }
+        function getFilteredGFEData(data, codes, state, pos){
             return data.filter(function(row) { 
-                return row.HCPCS_Cd === code &&
+                return codes.indexOf(row.HCPCS_Cd)>=0 &&
                     row.Rndrng_Prvdr_State_Abrvtn === state.toUpperCase() &&
                     row.Place_Of_Srvc === pos.toUpperCase(); 
                 })
@@ -18,6 +115,8 @@
             fd = data.filter(function(row) {
                 return row.code === code;
             })
+            if (fd.length==0){ return "unknown cpt description for "+code;}
+
             return fd[0].description;
         }
 
@@ -27,27 +126,53 @@
             rpel = document.getElementById('resultpre');
             rpel.innerHTML = "";
 
-            code = document.getElementById("hcpcscode").value.padStart(5, '0'); //[0].innerText;
+            codes = $("#hcpcscode").val(); //.padStart(5, '0'); //[0].innerText;
             state = document.getElementById("state").value;
             pos = document.getElementById("pos").value;
             discount = document.getElementById("discount").value;
-            console.log(code+' '+state + ' ' + pos);
-            var res = getFilteredGFEData(gfedata, code, state, pos);
+            console.log(codes+' '+state + ' ' + pos);
+
+            var res = getFilteredGFEData(gfedata, codes, state, pos);
+            
             console.log(res);
+            var currentdate = new Date(); 
+            var datetime = (currentdate.getMonth()+1) + "/"
+                            +  currentdate.getDate() + "/" 
+                            + currentdate.getFullYear() + " @ "  
+                            + currentdate.getHours() + ":"  
+                            + currentdate.getMinutes() + ":" 
+                            + currentdate.getSeconds();
             if (res.length==0){
                 rcel.innerHTML = "<b>NO DATA FOUND FOR SEARCH CRITERIA</b>"
             } 
             else{
-                gfe = res[0].Avg_Sbmtd_Chrg * (100-discount) / 100.0
-                desc = lookupCPTDesc(hcpcslookup, code);
-                rcel.innerHTML = 
-                    "<b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfe)+"</font></b><br>" +
-                    "Procedure: " + desc + "<br><br>";
+                charges = 0;
+                descs = [];
+                unfoundcodes = codes;
+                res.forEach(function(row){
+                    charges += parseFloat(row.Avg_Sbmtd_Chrg);
+                    ti = unfoundcodes.indexOf(row.HCPCS_Cd); 
+                    if (ti>=0){ unfoundcodes.splice(ti, 1); }
+                    descs.push(lookupCPTDesc(hcpcslookup, row.HCPCS_Cd)+"<br>");
+                })
+                console.log("Unfound codes: "+unfoundcodes);
+                console.log("Total charges: "+charges);
+                gfe = charges * (100-discount) / 100.0
+                shtml = "<b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfe)+"</font></b><br>" +
+                    "Procedures:<br>" + descs.join("") + "<br>" + 
+                    "Performed "+datetime+"<br>";
+                if (unfoundcodes.length>0){ 
+                    shtml += "<b><font size='+1'>NOTICE. GFE DOES NOT INCLUDE THE FOLLOWING CODES: "+unfoundcodes.join(", ")+"</font></b><br>";
+                }
+                rcel.innerHTML = shtml+"<br>";
+
                 rpel.innerHTML = syntaxHighlight(JSON.stringify(res, undefined, 4));
             }
             document.getElementById('resultpane').hidden = 0;
         }
-
+        function printPDF(){
+            html2pdf(document.getElementById('resultpane'));
+        }
         function syntaxHighlight(json) {
             if (typeof json != 'string') {
                 json = JSON.stringify(json, undefined, 2);
@@ -69,6 +194,8 @@
                 return '<span class="' + cls + '">' + match + '</span>';
             });
         }
+
+
     </script>
     <title>
         Hank.health Good Faith Estimator
@@ -81,10 +208,18 @@
 
     <bR><br>
     <form name='gfecalcform' action="javascript:void(0);">
-        HCPCS Code: <input name='hcpcscode' id='hcpcscode' type='text' width=7 maxlength=5>
+        <div>
+            HCPCS Code: <select name='hcpcscode' id='hcpcscode' width='30' onChange='hcpcsClickHandler()'>
+                <option disabled selected value> -- select an HCPCS code -- </option>
+            </select><br>
+        </div>
+
+        <div id='suggestions' hidden>
+                Suggestion tags go here
+        </div>
         <br><br>
         State: 
-        <select name='state' id='state' width='40'>
+        <select name='state' id='state' width='30' onchange="limitOne(this)">
             <option value="AL">Alabama</option>
             <option value="AK">Alaska</option>
             <option value="AZ">Arizona</option>
@@ -140,7 +275,7 @@
                 
         <br><br>
         Place of Service: 
-        <select name="pos" id='pos'>
+        <select name="pos" id='pos' onchange="limitOne(this)">
             <option value="O">Outpatient</option>
             <option value="F" selected>Inpatient</option>
         </select>
@@ -149,9 +284,10 @@
         <input id='discount' type='text' width='4' maxlength=4 value='40'> percent
 
         <br><br><br>
-        <input type="submit" onclick="calcGFE()" value='Get Estimates'></input>
+        <input type="submit" id='getestimate' onclick="calcGFE()" value='Get Estimates'></input>
         <br><br><br>
-        <div id='resultpane' hidden=1>
+        <div id='resultpane' hidden=1><br>
+            <span><button id='savepdf' onclick="printPDF()">Save Results to PDF</button><br></span>
             <span id='resultcomments'>
 
             </span>
@@ -164,10 +300,22 @@
     </font>
     <script>
         $("#state").selectize({
-          maxItems: 1,
+          maxItems: 3,
+          plugins: ["remove_button"],
+          persist: false,
         });
+        
+        $("#pos").selectize({
+          maxItems: 2,
+          plugins: ["remove_button"],
+          persist: false,
+        });
+
         var gfedata = [];
         var hcpcslookup = [];
+        var asacwdata = [];
+        var addllidata = [];
+
         var urlgfedata = "https://raw.githubusercontent.com/jackneil/publicfiles/main/hcpcs-state.csv"; 
         d3.csv(urlgfedata, function(rows) {
             rows.forEach(function(d) {
@@ -179,10 +327,38 @@
 
         });
 
-        var urlhcpcsdescs = "https://raw.githubusercontent.com/jackneil/publicfiles/main/hcpcsdescs.csv"; 
+        var urlcwdata = "https://raw.githubusercontent.com/jackneil/publicfiles/main/cw.csv"; 
+        d3.csv(urlcwdata, function(rows) {
+            asacwdata = rows;
+        });
+
+        var urladdlidata = "https://raw.githubusercontent.com/jackneil/publicfiles/main/ADDLLI-GIVEN-CPT_ASA.csv"; 
+        d3.csv(urladdlidata, function(rows) {
+            addllidata = rows;
+        });
+
+        var urlhcpcsdescs = "https://raw.githubusercontent.com/jackneil/publicfiles/main/hcpcsdescs.csv";
+        hcpcsitems = ""
+        /* Remove all options from the select list */
+        hcpcsel = $('#hcpcscode')
+        //hcpcsel.empty();
+
         d3.csv(urlhcpcsdescs, function(rows) {
             hcpcslookup = rows;
-
+            rows.forEach(function(row) {
+                //$('#hcpcscode')[0].selectize.addItem(row.ASA, true);
+                var newel = document.createElement('option');
+                newel.innerHTML = row.code+" - "+row.description;
+                newel.value = row.code;
+                hcpcsel.append(newel);
+                //hcpcsitems += "<option value="+row.code+">"+row.code+"-"+row.description+"</option>\n"
+            })
+            //document.getElementById("hcpcscode").innerHTML=hcpcsitems;
+            hcpcsel.selectize({
+              maxItems: 8,
+              plugins: ["remove_button"],
+              persist: false
+            });
         });
 
 //         CSV.fetch({
