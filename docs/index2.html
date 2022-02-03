@@ -7,10 +7,39 @@
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.default.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-    
+    <style>
+        .suggestion {
+            text-shadow: 0 1px 0 rgba(0, 51, 83, .3);
+            border-radius: 3px;
+            background-color: #1b9dec;
+            background-image: linear-gradient(to bottom, #1da7ee, #178ee9);
+            background-repeat: repeat-x;
+            box-shadow: 0 1px 0 rgba(0, 0, 0, .2), inset 0 1px rgba(255, 255, 255, .03);
+            cursor: pointer;
+            margin: 3px 3px 3px 0;
+            padding: 3px 12px;
+            background: #1da7ee;
+            color: #fff;
+            border: 1px solid #0073bb;
+            display: inline-flex;
+            align-items: center;
+            padding-right: 0 !important;
+            font-family: inherit;
+            font-size: 13px;
+            line-height: 18px;
+        }
+    </style>
     <script lang="javacript">
         function selectCode(code){
             $('#hcpcscode')[0].selectize.addItem(code, false);
+        }
+        
+        function limitOne(el){
+            elem = $(el);
+            sels = elem.val();
+            if (sels.length>1){
+                elem[0].selectize.removeItem(sels[0], true);
+            }
         }
 
         function hcpcsClickHandler(el){
@@ -23,9 +52,11 @@
                     return row.CPT===code;
                 });
                 if(cwd.length>0){
-                    shtml = "<span>Suggestion: Select an Anesthesia Professional Service Code ...<br>";
+                    shtml = "<span>Suggestion: Add one of the following anesthesia services ...<br>";
                     cwd.forEach(function(row) {
-                        shtml += "<button id='"+row.ASA+"' onclick=\"javascript: selectCode('"+row.ASA+"')\">"+lookupCPTDesc(hcpcslookup, row.ASA)+"</button><br>";
+                        shtml += "<div class='suggestion' id='"+row.ASA+"' onclick=\"javascript: selectCode('"+
+                            row.ASA+"')\">"+row.ASA+" ("+Math.round((parseFloat(row.ASA_FREQ)+Number.EPSILON)*100)+"%) "+
+                            lookupCPTDesc(hcpcslookup, row.ASA)+"</div><br>";
                         //selectCode(row.ASA);
                         //$('#hcpcscode')[0].selectize.addItem(row.ASA, false);
                         vals.push(row.ASA);
@@ -95,10 +126,14 @@
                 console.log("Unfound codes: "+unfoundcodes);
                 console.log("Total charges: "+charges);
                 gfe = charges * (100-discount) / 100.0
-                rcel.innerHTML = 
-                    "<b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfe)+"</font></b><br>" +
-                    "Procedures:<br>" + descs + "<br>" + 
-                    "Performed "+datetime+"<br><br>";
+                shtml = "<b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfe)+"</font></b><br>" +
+                    "Procedures:<br>" + descs.join("") + "<br>" + 
+                    "Performed "+datetime+"<br>";
+                if (unfoundcodes.length>0){ 
+                    shtml += "<b><font size='+1'>NOTICE. GFE DOES NOT INCLUDE THE FOLLOWING CODES: "+unfoundcodes.join(", ")+"</font></b><br>";
+                }
+                rcel.innerHTML = shtml+"<br>";
+
                 rpel.innerHTML = syntaxHighlight(JSON.stringify(res, undefined, 4));
             }
             document.getElementById('resultpane').hidden = 0;
@@ -152,7 +187,7 @@
         </div>
         <br><br>
         State: 
-        <select name='state' id='state' width='30'>
+        <select name='state' id='state' width='30' onchange="limitOne(this)">
             <option value="AL">Alabama</option>
             <option value="AK">Alaska</option>
             <option value="AZ">Arizona</option>
@@ -208,7 +243,7 @@
                 
         <br><br>
         Place of Service: 
-        <select name="pos" id='pos'>
+        <select name="pos" id='pos' onchange="limitOne(this)">
             <option value="O">Outpatient</option>
             <option value="F" selected>Inpatient</option>
         </select>
@@ -233,12 +268,21 @@
     </font>
     <script>
         $("#state").selectize({
-          maxItems: 1,
+          maxItems: 3,
+          plugins: ["remove_button"],
+          persist: false,
         });
         
+        $("#pos").selectize({
+          maxItems: 2,
+          plugins: ["remove_button"],
+          persist: false,
+        });
+
         var gfedata = [];
         var hcpcslookup = [];
         var asacwdata = [];
+        var addllidata = [];
 
         var urlgfedata = "https://raw.githubusercontent.com/jackneil/publicfiles/main/hcpcs-state.csv"; 
         d3.csv(urlgfedata, function(rows) {
@@ -254,6 +298,11 @@
         var urlcwdata = "https://raw.githubusercontent.com/jackneil/publicfiles/main/cw.csv"; 
         d3.csv(urlcwdata, function(rows) {
             asacwdata = rows;
+        });
+
+        var urladdlidata = "https://raw.githubusercontent.com/jackneil/publicfiles/main/ADDLLI-GIVEN-CPT_ASA.csv"; 
+        d3.csv(urladdlidata, function(rows) {
+            addllidata = rows;
         });
 
         var urlhcpcsdescs = "https://raw.githubusercontent.com/jackneil/publicfiles/main/hcpcsdescs.csv";
