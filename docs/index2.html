@@ -16,17 +16,40 @@
             background-repeat: repeat-x;
             box-shadow: 0 1px 0 rgba(0, 0, 0, .2), inset 0 1px rgba(255, 255, 255, .03);
             cursor: pointer;
-            margin: 3px 3px 3px 0;
+            margin: 3px 3px 3px 3px;
             padding: 3px 12px;
             background: #1da7ee;
             color: #fff;
             border: 1px solid #0073bb;
             display: inline-flex;
             align-items: center;
-            padding-right: 0 !important;
+            padding-right: 3px !important;
+            padding-left: 3px !important;
             font-family: inherit;
             font-size: 13px;
             line-height: 18px;
+        }
+        .gfetable{
+            border-radius: 3px;
+            color: rgb(0, 0, 0);
+        }
+        .gfeliheader {
+            align-items: left;
+            align-content: left;
+            padding-right: 3px !important;
+            padding-left: 3px !important;
+            font-family: inherit;
+            font-size: 18px;
+            font-weight: 900;
+            line-height: 26px;
+        }
+        .gfeli {
+            align-items: center;
+            padding-right: 3px !important;
+            padding-left: 3px !important;
+            font-family: inherit;
+            font-size: 18px;
+            line-height: 26px;
         }
     </style>
     <script lang="javacript">
@@ -56,7 +79,7 @@
                     shtml = "<span>Suggestion: Add one of the following anesthesia services ...<br>";
                     cwd.forEach(function(row) {
                         shtml += "<div class='suggestion' id='"+row.ASA+"' onclick=\"javascript: selectCode('"+
-                            row.ASA+"')\">"+row.ASA+" ("+Math.round((parseFloat(row.ASA_FREQ)+Number.EPSILON)*100)+"%) "+
+                            row.ASA+"')\">"+row.ASA+" ("+Math.round((parseFloat(row.ASA_FREQ)+Number.EPSILON)*100)+"% probability) "+
                             lookupCPTDesc(hcpcslookup, row.ASA)+"</div><br>";
                         //selectCode(row.ASA);
                         //$('#hcpcscode')[0].selectize.addItem(row.ASA, false);
@@ -120,6 +143,18 @@
             return fd[0].description;
         }
 
+        function createOutputRow(code, charge, id='0', quantity=1.0, icd10='xx.xxx'){
+            codedesc = lookupCPTDesc(hcpcslookup, code);
+            return "<tr id='"+id+"' class='gfeli'>" + 
+                "<td class='gfelidesc'>"+codedesc+"</td>"+
+                "<td class='gfeliloc'></td>"+
+                "<td class='gfeliicd'>"+icd10+"</td>"+
+                "<td class='gfelihcpcs'>"+code+"</td>"+
+                "<td class='gfeliquantity'>"+quantity+"</td>"+
+                "<td class='gfelicharge'>$"+Math.round((parseFloat(charge)+Number.EPSILON)*100)/100+"</td>"+
+                "</tr>\n";
+        }
+
         function calcGFE(){
             rcel = document.getElementById('resultcomments'); 
             rcel.innerHTML = "";
@@ -146,27 +181,38 @@
                 rcel.innerHTML = "<b>NO DATA FOUND FOR SEARCH CRITERIA</b>"
             } 
             else{
-                charges = 0;
-                descs = [];
-                unfoundcodes = codes;
+                var charges = 0;
+                var gfes = 0;
+                var descs = [];
+                var unfoundcodes = codes;
+                var outputrows = "";
                 res.forEach(function(row){
-                    charges += parseFloat(row.Avg_Sbmtd_Chrg);
+                    charge=parseFloat(row.Avg_Sbmtd_Chrg);
+                    gfe = charge * (100-discount) / 100.0;
+                    charges += charge;
+                    gfes += gfe;
+                    outputrows += createOutputRow(row.HCPCS_Cd, gfe)
                     ti = unfoundcodes.indexOf(row.HCPCS_Cd); 
                     if (ti>=0){ unfoundcodes.splice(ti, 1); }
                     descs.push(lookupCPTDesc(hcpcslookup, row.HCPCS_Cd)+"<br>");
                 })
                 console.log("Unfound codes: "+unfoundcodes);
                 console.log("Total charges: "+charges);
-                gfe = charges * (100-discount) / 100.0
-                shtml = "<b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfe)+"</font></b><br>" +
+                console.log("Total GFE: "+gfes)
+
+                shtml = "<b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfes)+"</font></b><br>" +
                     "Procedures:<br>" + descs.join("") + "<br>" + 
                     "Performed "+datetime+"<br>";
                 if (unfoundcodes.length>0){ 
-                    shtml += "<b><font size='+1'>NOTICE. GFE DOES NOT INCLUDE THE FOLLOWING CODES: "+unfoundcodes.join(", ")+"</font></b><br>";
+                    shtml += "<b><font size='+1'>NOTICE. GFE DOES NOT INCLUDE THE FOLLOWING CODES: "+
+                        unfoundcodes.join(", ")+"</font></b><br>";
                 }
+
+                shtml += "<br><table width='100%' class='gfetable'><tr class='gfeliheader'><td>Service/Item</td><td>Location of Service</td><td>Diagnosis Code</td>"+
+                    "<td>Service Code</td><td>Quantity</td><td>Expected Cost</td></tr>"+outputrows+"</table><br>";
                 rcel.innerHTML = shtml+"<br>";
 
-                rpel.innerHTML = syntaxHighlight(JSON.stringify(res, undefined, 4));
+                //rpel.innerHTML = syntaxHighlight(JSON.stringify(res, undefined, 4));
             }
             document.getElementById('resultpane').hidden = 0;
         }
@@ -204,7 +250,7 @@
 <body>
     <font face='Arial'>
     <img src='logo_size.jpg' height=116 width=150><br><br><br>
-    Use this calculator to determine a Good-Faith Estimate of self-pay charges for out-of-network billing, based upon CMS data.
+    Use this calculator to determine a Good-Faith Estimate of self-pay charges based upon CMS data.
 
     <bR><br>
     <form name='gfecalcform' action="javascript:void(0);">
