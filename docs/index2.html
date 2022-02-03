@@ -8,6 +8,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <style>
+        @media print {
+            .pagebreak { page-break-before: always; } /* page-break-after works, as well */
+        }
         .suggestion {
             text-shadow: 0 1px 0 rgba(0, 51, 83, .3);
             border-radius: 3px;
@@ -30,10 +33,19 @@
             line-height: 18px;
         }
         .gfetable{
-            border-radius: 3px;
             color: rgb(0, 0, 0);
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 0.9em;
+            font-family: sans-serif;
+            min-width: 400px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
         }
-        .gfeliheader {
+        .gfetable thead tr {
+            background-color: #1b9dec;
+            background-image: linear-gradient(to bottom, #1da7ee, #178ee9);
+            color: #ffffff;
+            text-align: left;
             align-items: left;
             align-content: left;
             padding-right: 3px !important;
@@ -43,14 +55,26 @@
             font-weight: 900;
             line-height: 26px;
         }
-        .gfeli {
-            align-items: center;
-            padding-right: 3px !important;
-            padding-left: 3px !important;
-            font-family: inherit;
-            font-size: 18px;
-            line-height: 26px;
+        .gfetable th,
+        .gfetable td {
+            padding: 12px 15px;
         }
+        .gfetable tbody tr {
+            border-bottom: 1px solid #dddddd;
+        }
+
+        .gfetable tbody tr:nth-of-type(even) {
+            background-color: #f3f3f3;
+        }
+
+        .gfetable tbody tr:last-of-type {
+            border-bottom: 2px solid #009879;
+        }
+        .gfetable tbody tr.active-row {
+            font-weight: bold;
+            color: #009879;
+        }
+
     </style>
     <script lang="javacript">
         function selectCode(code){
@@ -70,6 +94,8 @@
             var vals = $('#hcpcscode').val();
             console.log(vals);
             $("#suggestions").hide();
+            if (vals.length==0){ $("#print").hide(); }
+            else{ $("#print").show(); }
             if (vals.length==1){
                 var code = vals[0];
                 var cwd = asacwdata.filter(function(row) {
@@ -95,7 +121,7 @@
                 
                 console.log(vals);
                 $('#hcpcscode')[0].selectize.setCaret(-1);
-                $("#getestimate").focus();
+                $("#discount").focus();
             }
             else if (vals.length>1){
                 var codes = vals;
@@ -123,9 +149,11 @@
                     console.log(shtml);
                     console.log(vals);
                     $('#hcpcscode')[0].selectize.setCaret(-1);
-                    $("#getestimate").focus();
+                    //$("#getestimate").focus();
                 }
+
             }
+            calcGFE();
         }
         function getFilteredGFEData(data, codes, state, pos){
             return data.filter(function(row) { 
@@ -198,25 +226,31 @@
                 })
                 console.log("Unfound codes: "+unfoundcodes);
                 console.log("Total charges: "+charges);
-                console.log("Total GFE: "+gfes)
-
+                console.log("Total GFE: "+gfes);
+                console.log("Descriptions: "+descs);
                 shtml = "<b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfes)+"</font></b><br>" +
-                    "Procedures:<br>" + descs.join("") + "<br>" + 
-                    "Performed "+datetime+"<br>";
+                    "Estimate provided "+currentdate+"<br>";
                 if (unfoundcodes.length>0){ 
                     shtml += "<b><font size='+1'>NOTICE. GFE DOES NOT INCLUDE THE FOLLOWING CODES: "+
                         unfoundcodes.join(", ")+"</font></b><br>";
                 }
+                shtml+= "<br><table class='gfetable'><thead><tr><td>Procedures</td></tr></thead><tbody>";
+                descs.forEach(function (row){
+                    shtml += "<tr><td>"+row+"</td></tr>";
+                });
+                shtml+="</tbody></table>";
+                    
 
-                shtml += "<br><table width='100%' class='gfetable'><tr class='gfeliheader'><td>Service/Item</td><td>Location of Service</td><td>Diagnosis Code</td>"+
-                    "<td>Service Code</td><td>Quantity</td><td>Expected Cost</td></tr>"+outputrows+"</table><br>";
+
+                shtml += "<br><table width='100%' class='gfetable'><thead><tr class='gfeliheader'><td>Service/Item</td><td>Service Location</td><td>Diagnosis Code</td>"+
+                    "<td>Service Code</td><td>Quantity</td><td>Expected Cost</td></tr></thead><tbody>"+outputrows+"</tbody></table><br>";
                 rcel.innerHTML = shtml+"<br>";
 
                 //rpel.innerHTML = syntaxHighlight(JSON.stringify(res, undefined, 4));
             }
             document.getElementById('resultpane').hidden = 0;
         }
-        function printPDF(){
+        function savePDF(){
             html2pdf(document.getElementById('resultpane'));
         }
         function syntaxHighlight(json) {
@@ -249,7 +283,7 @@
 </head>
 <body>
     <font face='Arial'>
-    <img src='logo_size.jpg' height=116 width=150><br><br><br>
+        <a href='https://hank.ai' target='_blank'><img src='logo_size.jpg' height=116 width=150></a><br><br><br>
     Use this calculator to determine a Good-Faith Estimate of self-pay charges based upon CMS data.
 
     <bR><br>
@@ -330,16 +364,25 @@
         <input id='discount' type='text' width='4' maxlength=4 value='40'> percent
 
         <br><br><br>
-        <input type="submit" id='getestimate' onclick="calcGFE()" value='Get Estimates'></input>
-        <br><br><br>
-        <div id='resultpane' hidden=1><br>
-            <span><button id='savepdf' onclick="printPDF()">Save Results to PDF</button><br></span>
+        <input type="submit" id='getestimate' onclick="calcGFE()" hidden value='Get Estimates'></input>
+        <br><br>
+        <div id='resultpane' hidden><br>
+            <span><button id='savepdf' onclick="savePDF()" hidden>Save Results to PDF</button></span>
+            <span><button id='print' onclick="window.print()" hidden>Print Estimate</button></span>
+            <div class="pagebreak"></div>
+            <span><br><br></span>
             <span id='resultcomments'>
 
             </span>
             <pre id='resultpre'>
 
             </pre>
+            <div><br>
+                <center>
+                    Service Provided by:<br>
+                    <a href='https://hank.ai' target='_blank'><img src='logo_size.jpg' height=116 width=150></a>
+                </center>
+            </div>
         </div>
     </form>
 
