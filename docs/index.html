@@ -8,6 +8,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <style>
+        @media print {
+            .pagebreak { page-break-before: always; } /* page-break-after works, as well */
+        }
         .suggestion {
             text-shadow: 0 1px 0 rgba(0, 51, 83, .3);
             border-radius: 3px;
@@ -16,18 +19,62 @@
             background-repeat: repeat-x;
             box-shadow: 0 1px 0 rgba(0, 0, 0, .2), inset 0 1px rgba(255, 255, 255, .03);
             cursor: pointer;
-            margin: 3px 3px 3px 0;
+            margin: 3px 3px 3px 3px;
             padding: 3px 12px;
             background: #1da7ee;
             color: #fff;
             border: 1px solid #0073bb;
             display: inline-flex;
             align-items: center;
-            padding-right: 0 !important;
+            padding-right: 3px !important;
+            padding-left: 3px !important;
             font-family: inherit;
             font-size: 13px;
             line-height: 18px;
         }
+        .gfetable{
+            color: rgb(0, 0, 0);
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 0.9em;
+            font-family: sans-serif;
+            min-width: 400px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+        }
+        .gfetable thead tr {
+            background-color: #1b9dec;
+            background-image: linear-gradient(to bottom, #1da7ee, #178ee9);
+            color: #ffffff;
+            text-align: left;
+            align-items: left;
+            align-content: left;
+            padding-right: 3px !important;
+            padding-left: 3px !important;
+            font-family: inherit;
+            font-size: 18px;
+            font-weight: 900;
+            line-height: 26px;
+        }
+        .gfetable th,
+        .gfetable td {
+            padding: 12px 15px;
+        }
+        .gfetable tbody tr {
+            border-bottom: 1px solid #dddddd;
+        }
+
+        .gfetable tbody tr:nth-of-type(even) {
+            background-color: #f3f3f3;
+        }
+
+        .gfetable tbody tr:last-of-type {
+            border-bottom: 2px solid #009879;
+        }
+        .gfetable tbody tr.active-row {
+            font-weight: bold;
+            color: #009879;
+        }
+
     </style>
     <script lang="javacript">
         function selectCode(code){
@@ -47,6 +94,8 @@
             var vals = $('#hcpcscode').val();
             console.log(vals);
             $("#suggestions").hide();
+            if (vals.length==0){ $("#print").hide(); }
+            else{ $("#print").show(); }
             if (vals.length==1){
                 var code = vals[0];
                 var cwd = asacwdata.filter(function(row) {
@@ -56,7 +105,7 @@
                     shtml = "<span>Suggestion: Add one of the following anesthesia services ...<br>";
                     cwd.forEach(function(row) {
                         shtml += "<div class='suggestion' id='"+row.ASA+"' onclick=\"javascript: selectCode('"+
-                            row.ASA+"')\">"+row.ASA+" ("+Math.round((parseFloat(row.ASA_FREQ)+Number.EPSILON)*100)+"%) "+
+                            row.ASA+"')\">"+row.ASA+" ("+Math.round((parseFloat(row.ASA_FREQ)+Number.EPSILON)*100)+"% probability) "+
                             lookupCPTDesc(hcpcslookup, row.ASA)+"</div><br>";
                         //selectCode(row.ASA);
                         //$('#hcpcscode')[0].selectize.addItem(row.ASA, false);
@@ -72,7 +121,7 @@
                 
                 console.log(vals);
                 $('#hcpcscode')[0].selectize.setCaret(-1);
-                $("#getestimate").focus();
+                $("#discount").focus();
             }
             else if (vals.length>1){
                 var codes = vals;
@@ -100,9 +149,11 @@
                     console.log(shtml);
                     console.log(vals);
                     $('#hcpcscode')[0].selectize.setCaret(-1);
-                    $("#getestimate").focus();
+                    //$("#getestimate").focus();
                 }
+
             }
+            calcGFE();
         }
         function getFilteredGFEData(data, codes, state, pos){
             return data.filter(function(row) { 
@@ -118,6 +169,18 @@
             if (fd.length==0){ return "unknown cpt description for "+code;}
 
             return fd[0].description;
+        }
+
+        function createOutputRow(code, charge, id='0', quantity=1.0, icd10='xx.xxx'){
+            codedesc = lookupCPTDesc(hcpcslookup, code);
+            return "<tr id='"+id+"' class='gfeli'>" + 
+                "<td class='gfelidesc'>"+codedesc+"</td>"+
+                "<td class='gfeliloc'></td>"+
+                "<td class='gfeliicd'>"+icd10+"</td>"+
+                "<td class='gfelihcpcs'>"+code+"</td>"+
+                "<td class='gfeliquantity'>"+quantity+"</td>"+
+                "<td class='gfelicharge'>$"+Math.round((parseFloat(charge)+Number.EPSILON)*100)/100+"</td>"+
+                "</tr>\n";
         }
 
         function calcGFE(){
@@ -146,31 +209,48 @@
                 rcel.innerHTML = "<b>NO DATA FOUND FOR SEARCH CRITERIA</b>"
             } 
             else{
-                charges = 0;
-                descs = [];
-                unfoundcodes = codes;
+                var charges = 0;
+                var gfes = 0;
+                var descs = [];
+                var unfoundcodes = codes;
+                var outputrows = "";
                 res.forEach(function(row){
-                    charges += parseFloat(row.Avg_Sbmtd_Chrg);
+                    charge=parseFloat(row.Avg_Sbmtd_Chrg);
+                    gfe = charge * (100-discount) / 100.0;
+                    charges += charge;
+                    gfes += gfe;
+                    outputrows += createOutputRow(row.HCPCS_Cd, gfe)
                     ti = unfoundcodes.indexOf(row.HCPCS_Cd); 
                     if (ti>=0){ unfoundcodes.splice(ti, 1); }
                     descs.push(lookupCPTDesc(hcpcslookup, row.HCPCS_Cd)+"<br>");
                 })
                 console.log("Unfound codes: "+unfoundcodes);
                 console.log("Total charges: "+charges);
-                gfe = charges * (100-discount) / 100.0
-                shtml = "<b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfe)+"</font></b><br>" +
-                    "Procedures:<br>" + descs.join("") + "<br>" + 
-                    "Performed "+datetime+"<br>";
+                console.log("Total GFE: "+gfes);
+                console.log("Descriptions: "+descs);
+                shtml = "<b><font size='+2'>Your Good-Faith Estimate is $"+parseInt(gfes)+"</font></b><br>" +
+                    "Estimate provided "+currentdate+"<br>";
                 if (unfoundcodes.length>0){ 
-                    shtml += "<b><font size='+1'>NOTICE. GFE DOES NOT INCLUDE THE FOLLOWING CODES: "+unfoundcodes.join(", ")+"</font></b><br>";
+                    shtml += "<b><font size='+1'>NOTICE. GFE DOES NOT INCLUDE THE FOLLOWING CODES: "+
+                        unfoundcodes.join(", ")+"</font></b><br>";
                 }
+                shtml+= "<br><table class='gfetable'><thead><tr><td>Procedures</td></tr></thead><tbody>";
+                descs.forEach(function (row){
+                    shtml += "<tr><td>"+row+"</td></tr>";
+                });
+                shtml+="</tbody></table>";
+                    
+
+
+                shtml += "<br><table width='100%' class='gfetable'><thead><tr class='gfeliheader'><td>Service/Item</td><td>Service Location</td><td>Diagnosis Code</td>"+
+                    "<td>Service Code</td><td>Quantity</td><td>Expected Cost</td></tr></thead><tbody>"+outputrows+"</tbody></table><br>";
                 rcel.innerHTML = shtml+"<br>";
 
-                rpel.innerHTML = syntaxHighlight(JSON.stringify(res, undefined, 4));
+                //rpel.innerHTML = syntaxHighlight(JSON.stringify(res, undefined, 4));
             }
             document.getElementById('resultpane').hidden = 0;
         }
-        function printPDF(){
+        function savePDF(){
             html2pdf(document.getElementById('resultpane'));
         }
         function syntaxHighlight(json) {
@@ -203,8 +283,8 @@
 </head>
 <body>
     <font face='Arial'>
-    <img src='logo_size.jpg' height=116 width=150><br><br><br>
-    Use this calculator to determine a Good-Faith Estimate of self-pay charges for out-of-network billing, based upon CMS data.
+        <a href='https://hank.ai' target='_blank'><img src='logo_size.jpg' height=116 width=150></a><br><br><br>
+    Use this calculator to determine a Good-Faith Estimate of self-pay charges based upon CMS data.
 
     <bR><br>
     <form name='gfecalcform' action="javascript:void(0);">
@@ -284,16 +364,25 @@
         <input id='discount' type='text' width='4' maxlength=4 value='40'> percent
 
         <br><br><br>
-        <input type="submit" id='getestimate' onclick="calcGFE()" value='Get Estimates'></input>
-        <br><br><br>
-        <div id='resultpane' hidden=1><br>
-            <span><button id='savepdf' onclick="printPDF()">Save Results to PDF</button><br></span>
+        <input type="submit" id='getestimate' onclick="calcGFE()" hidden value='Get Estimates'></input>
+        <br><br>
+        <div id='resultpane' hidden><br>
+            <span><button id='savepdf' onclick="savePDF()" hidden>Save Results to PDF</button></span>
+            <span><button id='print' onclick="window.print()" hidden>Print Estimate</button></span>
+            <div class="pagebreak"></div>
+            <span><br><br></span>
             <span id='resultcomments'>
 
             </span>
             <pre id='resultpre'>
 
             </pre>
+            <div><br>
+                <center>
+                    Service Provided by:<br>
+                    <a href='https://hank.ai' target='_blank'><img src='logo_size.jpg' height=116 width=150></a>
+                </center>
+            </div>
         </div>
     </form>
 
